@@ -29,10 +29,10 @@ public class StationDataCollectorService extends BaseService {
         if(!Objects.equals(input, "ok")){
             String [] list = input.split(":");
 
-            //customer_id
-            System.out.println("Input: " + list[0]);
-            //station_id
-            System.out.println("Input: " + list[1]);
+            //customerId
+            System.out.println("customerId: " + list[0]);
+            //stationId
+            System.out.println("stationId: " + list[2]);
 
             /*
             int customerId = Integer.parseInt(input.substring(0,input.indexOf(":")));
@@ -41,12 +41,13 @@ public class StationDataCollectorService extends BaseService {
              */
 
             int customerId = Integer.parseInt(list[0]);
-            int stationId = Integer.parseInt(list[1]);
-            int amountOfStations = Integer.parseInt(list[2]);
+            String invoiceId = list[1];
+            int stationId = Integer.parseInt(list[2]);
+            int amountOfStations = Integer.parseInt(list[3]);
 
             System.out.println(getKwhOfStation(customerId, stationId));
 
-            return getKwhOfStation(customerId, stationId) + ":" + amountOfStations;
+            return getKwhOfStation(customerId, stationId) + ":" + amountOfStations + ":" + invoiceId + ":" + customerId;
 
         }
 
@@ -57,13 +58,13 @@ public class StationDataCollectorService extends BaseService {
         return DriverManager.getConnection(DB_CONNECTION);
     }
 
-    public int getKwhOfStation(int customer_id, int station_id) {
+    public int getKwhOfStation(int customerId, int stationId) {
         try (Connection conn = connect()) {
-            String sql = "SELECT kwh FROM charging_stations_history WHERE customer_id = ? AND station_id = ? ";
+            String sql = "SELECT SUM(kwh) FROM charging_stations_history WHERE customer_id = ? AND station_id = ? ";
             PreparedStatement preparedStatement = conn.prepareStatement(sql);
 
-            preparedStatement.setInt(1, customer_id);
-            preparedStatement.setInt(2, station_id);
+            preparedStatement.setInt(1, customerId);
+            preparedStatement.setInt(2, stationId);
 
             ResultSet resultSet = preparedStatement.executeQuery();
 
