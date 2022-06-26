@@ -30,7 +30,9 @@ public abstract class BaseService implements Runnable {
         }
 
         String output = executeInternal(input);
-        Producer.send(output, outDestination, brokerUrl);
+        if(output != ""){
+            Producer.send(output, outDestination, brokerUrl);
+        }
     }
 
     protected abstract String executeInternal(String input);

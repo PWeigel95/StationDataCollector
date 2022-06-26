@@ -1,11 +1,9 @@
 package service;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
+import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
 
@@ -13,63 +11,71 @@ public class StationDataCollectorService extends BaseService {
 
     private final String id;
 
-    private static final String DB_CONNECTION = "jdbc:postgresql://localhost:5432/postgres@localhost?user=admin&password=password";
+    private static final String DB_CONNECTION = "jdbc:postgresql://localhost:5432/postgres?user=admin&password=password";
+
+    private int totalKwh = 0;
 
     public StationDataCollectorService(String inDestination, String outDestination, String brokerUrl) {
         super(inDestination, outDestination, brokerUrl);
 
         this.id = UUID.randomUUID().toString();
 
-        System.out.println("Food Worker (" + this.id + ") started...");
+        System.out.println("Station Data (" + this.id + ") started...");
     }
 
     @Override
     protected String executeInternal(String input) {
-        String jobId = UUID.randomUUID().toString();
 
-        try (Connection conn = connect()) {
-            String sql = "INSERT INTO orders (type, name, status, job_id, worker_id) VALUES (?, ?, ?, ?, ?)";
-            PreparedStatement preparedStatement = conn.prepareStatement(sql);
+        if(!Objects.equals(input, "ok")){
+            String [] list = input.split(":");
 
-            preparedStatement.setString(1, "FOOD");
-            preparedStatement.setString(2, input);
-            preparedStatement.setString(3, "working...");
-            preparedStatement.setString(4, jobId);
-            preparedStatement.setString(5, this.id);
+            //customer_id
+            System.out.println("Input: " + list[0]);
+            //station_id
+            System.out.println("Input: " + list[1]);
 
-            preparedStatement.execute();
-        } catch (SQLException e) {
-            return "error";
+            /*
+            int customerId = Integer.parseInt(input.substring(0,input.indexOf(":")));
+            int stationId = Integer.parseInt(input.substring(input.indexOf(":") + 1));
+
+             */
+
+            int customerId = Integer.parseInt(list[0]);
+            int stationId = Integer.parseInt(list[1]);
+            int amountOfStations = Integer.parseInt(list[2]);
+
+            System.out.println(getKwhOfStation(customerId, stationId));
+
+            return getKwhOfStation(customerId, stationId) + ":" + amountOfStations;
+
         }
 
-        try {
-            Random r = new Random();
-            int low = 30000;
-            int high = 60000;
-            int result = r.nextInt(high-low) + low;
-
-            Thread.sleep(result);
-        } catch (InterruptedException e) {
-            return "error";
-        }
-
-        try (Connection conn = connect()) {
-            String sql = "UPDATE orders SET status = ?, last_updated = ? WHERE job_id = ?";
-            PreparedStatement preparedStatement = conn.prepareStatement(sql);
-
-            preparedStatement.setString(1, "done!");
-            preparedStatement.setObject(2, LocalDateTime.now());
-            preparedStatement.setString(3, jobId);
-
-            preparedStatement.execute();
-        } catch (SQLException e) {
-            return "error";
-        }
-
-        return "ok";
+        return "";
     }
 
     private Connection connect() throws SQLException {
         return DriverManager.getConnection(DB_CONNECTION);
     }
+
+    public int getKwhOfStation(int customer_id, int station_id) {
+        try (Connection conn = connect()) {
+            String sql = "SELECT kwh FROM charging_stations_history WHERE customer_id = ? AND station_id = ? ";
+            PreparedStatement preparedStatement = conn.prepareStatement(sql);
+
+            preparedStatement.setInt(1, customer_id);
+            preparedStatement.setInt(2, station_id);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            if(resultSet.next()){
+                return resultSet.getInt(1);
+            }
+            else return 0;
+
+        } catch (SQLException e) {
+            return 0;
+        }
+    }
+
+
 }
